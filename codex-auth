@@ -130,8 +130,19 @@ def current_name(vault):
 
 
 def remember_current(vault, name):
-    # One name only. No history, timestamps, tokens, or identity index.
+    # One name only. No history or timestamp metadata is stored here.
     atomic_copy((json.dumps({'name': name}) + '\n').encode(), vault / '.current', overwrite=True)
+
+
+def saved_date(path):
+    """Return a saved profile's local file date without reading credential contents."""
+    try:
+        info = path.lstat()
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.getuid():
+            return None
+        return time.strftime('%Y%m%d', time.localtime(info.st_mtime))
+    except (OSError, OverflowError, ValueError):
+        return None
 
 
 def matching_names(content, profiles, preferred):
@@ -164,7 +175,10 @@ def show_switches(active, vault):
     content = read_auth(active) if os.path.lexists(active) else None
     selected = matching_names(content, profiles, preferred) if content is not None else None
     for path, _, _ in profiles:
-        print(('→ ' if path.stem == selected else '  ') + path.stem)
+        prefix = '→ ' if path.stem == selected else '  '
+        stamp = saved_date(path)
+        suffix = f' ({stamp})' if stamp is not None else ' (날짜 불명)'
+        print(prefix + path.stem + suffix)
     if not profiles:
         print('이용 가능한 저장 계정이 없습니다.')
     if content is None:
