@@ -13,6 +13,7 @@ import select
 import shlex
 import signal
 import stat
+import subprocess
 import sys
 import tempfile
 import time
@@ -229,7 +230,7 @@ def logout(active, vault):
         finally:
             os.close(directory)
     marker.unlink(missing_ok=True)
-    print('로그아웃됨: auth.json 제거 (자동 저장 없음). 새 계정은 codex login으로 인증하세요.'
+    print('로그아웃됨: auth.json 제거 (자동 저장 없음). 새 계정은 codex-auth login으로 인증하세요.'
           if existed else '이미 로그아웃 상태입니다 (auth.json 없음).')
 
 
@@ -512,13 +513,15 @@ def check_codex_target(root):
 
 
 def main(argv=None, *, user_root=None):
+    argv = sys.argv[1:] if argv is None else list(argv)
     parser = argparse.ArgumentParser(
-        description='~/.auth/<이름>.json과 ~/.codex/auth.json 사이에서 인증 파일만 복사합니다.',
-        epilog='Python 3.11+ / Linux. 계정 변경은 Codex 사용을 마친 뒤 실행하세요. Codex는 별도로 실행합니다.')
+        description='~/.auth/<이름>.json과 ~/.codex/auth.json을 관리하고 Codex device-auth 로그인을 실행합니다.',
+        epilog='Python 3.11+ / Linux. 계정 변경과 로그인은 Codex 사용을 마친 뒤 실행하세요.')
     sub = parser.add_subparsers(dest='command', required=True)
     sub.add_parser('init', help='~/.auth 생성 및 ~/.local/bin/codex-auth 명령 설치')
     sub.add_parser('list', help='저장된 이름 목록 (인증 내용은 출력하지 않음)')
     sub.add_parser('status', help='현재 UID의 Codex 프로세스 확인')
+    sub.add_parser('login', help='codex login --device-auth 실행')
     clean = sub.add_parser('cleanup', help='현재 UID의 Codex PID 또는 all 종료 (생략 시 조회만)')
     clean.add_argument('targets', metavar='PID|all', nargs='*', help='PID 목록 또는 all 단독 지정')
     clean.add_argument('-f', '--force', action='store_true', help='SIGTERM 후에도 남으면 SIGKILL 사용')
@@ -529,6 +532,9 @@ def main(argv=None, *, user_root=None):
     save.add_argument('name', type=profile_name, nargs='?', help='선택사항: 자동 이름 대신 사용할 저장 이름')
     save.add_argument('-f', '--force', action='store_true', help='같은 이름의 저장 파일 덮어쓰기')
     sub.add_parser('logout', help='자동 저장 없이 ~/.codex/auth.json 제거')
+    if not argv:
+        parser.print_help()
+        return 0
     args = parser.parse_args(argv)
     if args.command == 'cleanup':
         if 'all' in args.targets:
@@ -565,6 +571,10 @@ def main(argv=None, *, user_root=None):
                     continue
                 names.append(name)
             print('\n'.join(sorted(names)) if names else '저장된 계정이 없습니다.')
+        elif args.command == 'login':
+            require_idle()
+            result = subprocess.run(['codex', 'login', '--device-auth'], check=False)
+            return result.returncode
         else:
             check_codex_target(codex)
             checked_directory(codex)

@@ -50,12 +50,17 @@ export PATH="$HOME/.local/bin:$PATH"
 
 ### 명령 목록
 
+인자 없이 `codex-auth`를 실행하면 아래 명령 목록을 간단히 볼 수 있습니다.
+각 명령의 상세 옵션은 `codex-auth <명령> --help`로 확인합니다.
+
 | 명령 | 동작 |
 | --- | --- |
+| `codex-auth` | 전체 명령 목록과 짧은 설명 출력 |
 | `codex-auth init` | 인증 보관 디렉터리 생성 및 명령 설치 |
 | `codex-auth save` | 현재 인증을 저장. 이메일의 `@` 앞부분을 저장 이름으로 자동 사용 |
 | `codex-auth save --force` | 자동으로 정한 이름의 기존 저장본 덮어쓰기 |
 | `codex-auth list` | 저장된 이름 목록 출력 |
+| `codex-auth login` | `codex login --device-auth` 실행 |
 | `codex-auth switch` | 저장 계정 목록과 현재 계정을 `→`로 표시 |
 | `codex-auth switch <이름>` | 현재 인증을 기존 저장본에 자동 저장한 뒤 선택한 계정으로 전환 |
 | `codex-auth logout` | 자동 저장 없이 현재 `auth.json` 제거 |
@@ -64,19 +69,20 @@ export PATH="$HOME/.local/bin:$PATH"
 | `codex-auth cleanup <PID> [PID ...]` | 지정한 Codex 프로세스 종료 |
 | `codex-auth cleanup all` | 현재 Linux UID의 Codex 프로세스를 일괄 종료 |
 | `codex-auth cleanup <PID 또는 all> --force` | 정상 종료 요청 후에도 남은 대상 강제 종료 |
-| `codex-auth <명령> --help` | 명령별 도움말 |
+| `codex-auth --help` | 전체 사용법과 명령 목록 |
+| `codex-auth <명령> --help` | 명령별 상세 도움말 |
 
 `--force`는 `-f`로도 쓸 수 있습니다. `cleanup all`의 `all`은 PID와 섞어서 지정할 수 없습니다.
 저장 이름을 직접 정하고 싶을 때만 선택적으로 `codex-auth save <이름>`을 사용하세요.
 직접 정한 이름의 저장본을 갱신할 때는 `codex-auth save <이름> --force`로 같은 이름을 지정합니다.
-이전 명령 이름인 `login`, `store`는 각각 `switch`, `save`로 변경되었습니다.
+이전 명령 이름인 `store`는 `save`로 변경되었습니다.
 
 ### 사용 예시
 
 첫 계정 저장은 이름 인자 없이 실행합니다.
 
 ```bash
-codex login
+codex-auth login
 codex-auth save
 ```
 
@@ -88,7 +94,7 @@ codex-auth save
 # 기존 Codex 작업을 마친 뒤 일반 터미널에서 실행
 codex-auth save --force        # 보관할 현재 인증을 먼저 저장
 codex-auth logout              # 자동 저장하지 않음
-codex login
+codex-auth login
 codex-auth save
 ```
 
@@ -113,7 +119,8 @@ codex resume                    # 또는 codex
 `cleanup all`은 **작업 중인 세션과 daemon도 종료 대상에 포함**합니다.
 종료할 프로세스가 일부라면 `cleanup <PID>`를 사용하세요.
 `codex-auth switch <이름>`은 파일을 교체하며 Codex를 실행하지 않습니다.
-새 인증을 받는 `codex login`과 구분해서 사용하세요.
+새 인증은 `codex-auth login`으로 받고, 인증이 끝나면 `codex-auth save`로 보관하세요.
+`codex-auth login`은 `codex login --device-auth`를 실행할 뿐 저장본을 자동으로 만들지 않습니다.
 
 ## 디테일
 
@@ -150,7 +157,7 @@ API 키 인증처럼 이메일이 없거나 안전한 파일 이름을 만들 �
 - 같은 계정이 여러 이름에 저장되어 있으면 실제 인증과 일치하는 현재 선택 이름을 우선합니다.
   연결할 이름이 하나로 정해지지 않으면 임의로 선택하지 않습니다.
 
-따라서 `codex login`을 직접 실행해 다른 저장 계정으로 로그인해도 실제 계정을 표시합니다.
+따라서 `codex-auth login` 또는 `codex login`을 직접 실행해 다른 저장 계정으로 로그인해도 실제 계정을 표시합니다.
 미등록 계정이거나 구분할 수 없으면 그 상태를 표시하고 `save`로 등록하도록 안내합니다.
 현재 `auth.json`이 없으면 로그아웃 상태입니다. 비교는 저장 파일 수에 비례하는 로컬 작업이며
 추가 네트워크 요청을 보내지 않습니다.
@@ -182,7 +189,7 @@ Codex는 사용 중 인증 토큰을 갱신할 수 있어 전환 직전 저장�
 저장본 검색, 자동 저장, 확인 질문 없이 실행하므로 보관할 인증은 사용자가 먼저 `save` 해야 합니다.
 `~/.auth/*.json`의 저장본은 유지하며, 이미 로그아웃 상태라면 그대로 성공합니다.
 서버의 토큰을 폐기하는 기능은 아니며 로컬 인증 파일만 제거합니다.
-이후 `codex login`으로 새 계정을 인증하고 `codex-auth save`로 등록할 수 있습니다.
+이후 `codex-auth login`으로 새 계정을 인증하고 `codex-auth save`로 등록할 수 있습니다.
 
 ### 프로세스 검사와 종료 범위
 
@@ -233,15 +240,3 @@ Codex는 사용 중 인증 토큰을 갱신할 수 있어 전환 직전 저장�
 `init`이 설치하는 명령은 소스 스크립트의 심볼릭 링크입니다.
 프로젝트를 옮기면 기존 설치 링크를 제거하고 새 위치에서 `init`을 실행하세요.
 이미 다른 파일이 설치 위치에 있으면 자동으로 덮어쓰지 않습니다.
-
-### 테스트
-
-프로젝트 디렉터리에서 실행합니다.
-
-```bash
-python3 -m unittest discover -s tests -v
-```
-
-임시 디렉터리, 가짜 JWT와 `/proc`, 신호 모의 객체로 실패 경로와 UID 격리를 검사합니다.
-실제 pidfd 종료 테스트는 테스트가 생성한 일회용 `sleep` 자식에만 신호를 보냅니다.
-실제 계정 인증이나 사용자의 Codex 세션은 변경하지 않습니다.
