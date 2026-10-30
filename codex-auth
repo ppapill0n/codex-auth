@@ -524,8 +524,9 @@ def main(argv=None, *, user_root=None):
     clean.add_argument('-f', '--force', action='store_true', help='SIGTERM 후에도 남으면 SIGKILL 사용')
     switch = sub.add_parser('switch', help='계정 목록 조회 또는 현재 인증을 자동 저장하고 계정 전환')
     switch.add_argument('name', type=profile_name, nargs='?', help='생략 시 계정 목록과 현재 계정 표시')
-    save = sub.add_parser('save', help='현재 ~/.codex/auth.json을 이름을 붙여 저장')
-    save.add_argument('name', type=profile_name, nargs='?', help='생략 시 JWT 이메일의 @ 앞부분 사용')
+    save = sub.add_parser('save', help='현재 인증을 이메일에서 자동으로 정한 이름으로 저장',
+                          description='기본 사용: codex-auth save. 이메일의 @ 앞부분을 저장 이름으로 사용합니다.')
+    save.add_argument('name', type=profile_name, nargs='?', help='선택사항: 자동 이름 대신 사용할 저장 이름')
     save.add_argument('-f', '--force', action='store_true', help='같은 이름의 저장 파일 덮어쓰기')
     sub.add_parser('logout', help='자동 저장 없이 ~/.codex/auth.json 제거')
     args = parser.parse_args(argv)
@@ -551,7 +552,7 @@ def main(argv=None, *, user_root=None):
             cleanup(args.pids, force=args.force, all_processes=args.targets == ['all'])
         elif args.command == 'list':
             if not os.path.lexists(vault):
-                print('저장된 계정이 없습니다. codex-auth save <이름>으로 저장하세요.')
+                print('저장된 계정이 없습니다. codex-auth save로 저장하세요.')
                 return 0
             checked_directory(vault)
             names = []

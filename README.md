@@ -1,15 +1,16 @@
 # codex-auth
 
-## 컨셉 설명
+## 설명
 
 `codex-auth`는 하나의 Linux 사용자 계정에서 여러 Codex 계정을 **번갈아 사용**하기 위한 작은 도구입니다.
 `~/.codex`는 하나만 유지하고, 계정별로 보관한 `auth.json`을 복사해 현재 인증을 교체합니다.
 설정, 대화 기록, 스킬, 플러그인은 공통으로 사용합니다.
+현재 계정은 `codex-auth save`로 저장합니다. 저장 이름은 이메일의 `@` 앞부분에서 자동으로 정합니다.
 
 ```text
 ~/.auth/
   alice.json ── switch alice ──▶ ~/.codex/auth.json
-  bob.json   ◀── save bob ─── ~/.codex/auth.json
+  bob.json   ◀── save ───────── ~/.codex/auth.json  # bob@example.com으로 로그인한 경우
   .current   # 현재 선택 이름 하나만 저장
 
 ~/.codex/
@@ -52,8 +53,8 @@ export PATH="$HOME/.local/bin:$PATH"
 | 명령 | 동작 |
 | --- | --- |
 | `codex-auth init` | 인증 보관 디렉터리 생성 및 명령 설치 |
-| `codex-auth save [이름]` | 현재 인증을 저장. 이름 생략 시 JWT 이메일의 `@` 앞부분 사용 |
-| `codex-auth save [이름] --force` | 같은 이름의 저장본 덮어쓰기 |
+| `codex-auth save` | 현재 인증을 저장. 이메일의 `@` 앞부분을 저장 이름으로 자동 사용 |
+| `codex-auth save --force` | 자동으로 정한 이름의 기존 저장본 덮어쓰기 |
 | `codex-auth list` | 저장된 이름 목록 출력 |
 | `codex-auth switch` | 저장 계정 목록과 현재 계정을 `→`로 표시 |
 | `codex-auth switch <이름>` | 현재 인증을 기존 저장본에 자동 저장한 뒤 선택한 계정으로 전환 |
@@ -66,29 +67,30 @@ export PATH="$HOME/.local/bin:$PATH"
 | `codex-auth <명령> --help` | 명령별 도움말 |
 
 `--force`는 `-f`로도 쓸 수 있습니다. `cleanup all`의 `all`은 PID와 섞어서 지정할 수 없습니다.
+저장 이름을 직접 정하고 싶을 때만 선택적으로 `codex-auth save <이름>`을 사용하세요.
+직접 정한 이름의 저장본을 갱신할 때는 `codex-auth save <이름> --force`로 같은 이름을 지정합니다.
 이전 명령 이름인 `login`, `store`는 각각 `switch`, `save`로 변경되었습니다.
 
 ### 사용 예시
 
-첫 계정 저장:
+첫 계정 저장은 이름 인자 없이 실행합니다.
 
 ```bash
 codex login
-codex-auth save alice
+codex-auth save
 ```
 
-다른 계정 등록:
+예를 들어 `alice@example.com`으로 로그인했다면 `~/.auth/alice.json`에 저장됩니다.
+
+다른 계정(예: `bob@example.com`) 등록:
 
 ```bash
 # 기존 Codex 작업을 마친 뒤 일반 터미널에서 실행
-codex-auth save alice --force  # 보관할 현재 인증을 먼저 저장
+codex-auth save --force        # 보관할 현재 인증을 먼저 저장
 codex-auth logout              # 자동 저장하지 않음
 codex login
-codex-auth save bob
+codex-auth save
 ```
-
-이메일에서 이름을 자동으로 얻으려면 `codex-auth save`만 실행합니다.
-예를 들어 `alice@example.com`은 `~/.auth/alice.json`에 저장됩니다.
 
 저장된 계정으로 전환:
 
@@ -118,13 +120,15 @@ codex resume                    # 또는 codex
 ### 인증 파일과 저장 이름
 
 보관 위치는 현재 사용자의 `~/.auth/<이름>.json`, 적용 위치는 `~/.codex/auth.json`입니다.
-`save`에서 이름을 생략하면 `tokens.id_token`의 JWT payload를 로컬에서 디코딩합니다.
+`codex-auth save`는 기본적으로 이메일에서 저장 이름을 자동으로 정합니다.
+이를 위해 `tokens.id_token`의 JWT payload를 로컬에서 디코딩합니다.
 이메일이 없으면 `tokens.access_token`에서도 찾으며, 지원하는 claim은 `email`과
 `https://api.openai.com/profile.email`입니다.
 JWT 디코딩은 이름 추정과 로컬 계정 비교에만 사용하며 서명이나 인증 유효성을 검증하지 않습니다.
 
 이메일의 `@` 앞부분을 그대로 사용하며 `+`도 보존합니다.
-API 키 인증처럼 이메일이 없거나 안전한 파일 이름을 만들 수 없으면 명시적인 이름을 요청합니다.
+이름 인자는 선택사항입니다. 다른 이름을 쓰고 싶으면 `codex-auth save work`처럼 지정할 수 있습니다.
+API 키 인증처럼 이메일이 없거나 안전한 파일 이름을 만들 수 없는 경우에는 이름을 직접 지정해야 합니다.
 이름은 영문/숫자로 시작하는 1~64자의 영문·숫자·`_`·`-`·`.`·`+`를 허용합니다.
 경로나 숨김 파일 이름은 받지 않습니다.
 
@@ -147,7 +151,7 @@ API 키 인증처럼 이메일이 없거나 안전한 파일 이름을 만들 �
   연결할 이름이 하나로 정해지지 않으면 임의로 선택하지 않습니다.
 
 따라서 `codex login`을 직접 실행해 다른 저장 계정으로 로그인해도 실제 계정을 표시합니다.
-미등록 계정이거나 구분할 수 없으면 그 상태를 표시하고 `save [이름]`을 안내합니다.
+미등록 계정이거나 구분할 수 없으면 그 상태를 표시하고 `save`로 등록하도록 안내합니다.
 현재 `auth.json`이 없으면 로그아웃 상태입니다. 비교는 저장 파일 수에 비례하는 로컬 작업이며
 추가 네트워크 요청을 보내지 않습니다.
 
@@ -162,7 +166,8 @@ API 키 인증처럼 이메일이 없거나 안전한 파일 이름을 만들 �
 현재와 같은 계정으로 전환하는 경우에도 갱신된 인증을 유지합니다.
 
 현재 인증이 미등록이거나 저장 이름을 확정할 수 없으면 **전환을 중단**합니다.
-먼저 `save <이름>`으로 등록하거나, 기존 이름을 갱신하려는 의도라면 `save <이름> --force`를 실행하세요.
+먼저 `codex-auth save`로 등록하거나, 기존 저장본을 갱신하려는 의도라면 `codex-auth save --force`를 실행하세요.
+직접 지정한 이름을 쓰려면 이 명령에 해당 이름을 함께 전달하면 됩니다.
 자동 저장에 실패한 경우에도 현재 인증을 교체하지 않습니다.
 현재 인증이 없는 로그아웃 상태에서는 자동 저장 없이 선택한 계정으로 전환합니다.
 
@@ -177,7 +182,7 @@ Codex는 사용 중 인증 토큰을 갱신할 수 있어 전환 직전 저장�
 저장본 검색, 자동 저장, 확인 질문 없이 실행하므로 보관할 인증은 사용자가 먼저 `save` 해야 합니다.
 `~/.auth/*.json`의 저장본은 유지하며, 이미 로그아웃 상태라면 그대로 성공합니다.
 서버의 토큰을 폐기하는 기능은 아니며 로컬 인증 파일만 제거합니다.
-이후 `codex login`으로 새 계정을 인증하고 `codex-auth save [이름]`으로 등록할 수 있습니다.
+이후 `codex login`으로 새 계정을 인증하고 `codex-auth save`로 등록할 수 있습니다.
 
 ### 프로세스 검사와 종료 범위
 
